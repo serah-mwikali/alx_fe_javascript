@@ -1,48 +1,7 @@
 // Main application object
 const QuoteGenerator = {
   // Initial quotes database
-  quotes: [
-    {
-      text: "The only way to do great work is to love what you do.",
-      author: "Steve Jobs",
-      category: "Motivation"
-    },
-    {
-      text: "Life is what happens to you while you're busy making other plans.",
-      author: "John Lennon",
-      category: "Life"
-    },
-    {
-      text: "The future belongs to those who believe in the beauty of their dreams.",
-      author: "Eleanor Roosevelt",
-      category: "Inspiration"
-    },
-    {
-      text: "It is during our darkest moments that we must focus to see the light.",
-      author: "Aristotle",
-      category: "Perseverance"
-    },
-    {
-      text: "Whoever is happy will make others happy too.",
-      author: "Anne Frank",
-      category: "Happiness"
-    },
-    {
-      text: "You must be the change you wish to see in the world.",
-      author: "Mahatma Gandhi",
-      category: "Wisdom"
-    },
-    {
-      text: "Spread love everywhere you go. Let no one ever come to you without leaving happier.",
-      author: "Mother Teresa",
-      category: "Love"
-    },
-    {
-      text: "The only thing we have to fear is fear itself.",
-      author: "Franklin D. Roosevelt",
-      category: "Courage"
-    }
-  ],
+  quotes: [],
   
   // Available categories
   categories: ["Motivation", "Life", "Inspiration", "Perseverance", "Happiness", "Wisdom", "Love", "Courage"],
@@ -54,7 +13,15 @@ const QuoteGenerator = {
   stats: {
     quotesShown: 0,
     totalQuotes: 0,
-    totalCategories: 0
+    totalCategories: 0,
+    sessionStartTime: new Date().toLocaleTimeString()
+  },
+  
+  // Session data
+  sessionData: {
+    lastViewedQuote: null,
+    lastViewedCategory: null,
+    viewCount: 0
   },
   
   // DOM Elements
@@ -63,12 +30,14 @@ const QuoteGenerator = {
   // Initialize the application
   init: function() {
     this.cacheDOM();
+    this.loadFromStorage();
     this.bindEvents();
     this.updateStats();
     this.populateCategories();
     this.renderCategoryFilters();
     this.showRandomQuote();
     this.renderRecentQuotes();
+    this.updateSessionInfo();
   },
   
   // Cache DOM elements
@@ -91,7 +60,14 @@ const QuoteGenerator = {
       totalQuotes: document.getElementById('totalQuotes'),
       totalCategories: document.getElementById('totalCategories'),
       quotesShown: document.getElementById('quotesShown'),
-      recentQuotes: document.getElementById('recentQuotes')
+      recentQuotes: document.getElementById('recentQuotes'),
+      exportBtn: document.getElementById('exportBtn'),
+      importBtn: document.getElementById('importBtn'),
+      importFile: document.getElementById('importFile'),
+      clearStorageBtn: document.getElementById('clearStorageBtn'),
+      storageAlert: document.getElementById('storageAlert'),
+      sessionInfo: document.getElementById('sessionInfo'),
+      sessionData: document.getElementById('sessionData')
     };
   },
   
@@ -109,7 +85,312 @@ const QuoteGenerator = {
     this.elements.newCategoryBtn.addEventListener('click', () => this.showCategoryForm());
     this.elements.saveCategoryBtn.addEventListener('click', () => this.saveCategory());
     this.elements.cancelCategoryBtn.addEventListener('click', () => this.hideCategoryForm());
+    
+    // Storage events
+    this.elements.exportBtn.addEventListener('click', () => this.exportToJSON());
+    this.elements.importFile.addEventListener('change', (e) => this.importFromJSON(e));
+    this.elements.clearStorageBtn.addEventListener('click', () => this.clearAllData());
   },
+  
+  // ====================
+  // WEB STORAGE METHODS
+  // ====================
+  
+  // Save quotes to Local Storage
+  saveToLocalStorage: function() {
+    try {
+      const data = {
+        quotes: this.quotes,
+        categories: this.categories,
+        stats: this.stats
+      };
+      localStorage.setItem('quoteGeneratorData', JSON.stringify(data));
+      console.log('Data saved to Local Storage');
+    } catch (error) {
+      console.error('Error saving to Local Storage:', error);
+      this.showStorageAlert('Error saving data to Local Storage', 'error');
+    }
+  },
+  
+  // Load quotes from Local Storage
+  loadFromLocalStorage: function() {
+    try {
+      const savedData = localStorage.getItem('quoteGeneratorData');
+      if (savedData) {
+        const data = JSON.parse(savedData);
+        this.quotes = data.quotes || [];
+        this.categories = data.categories || ["Motivation", "Life", "Inspiration"];
+        this.stats = data.stats || { quotesShown: 0, totalQuotes: 0, totalCategories: 0 };
+        console.log('Data loaded from Local Storage');
+        return true;
+      }
+    } catch (error) {
+      console.error('Error loading from Local Storage:', error);
+      this.showStorageAlert('Error loading data from Local Storage', 'error');
+    }
+    return false;
+  },
+  
+  // Save session data to Session Storage
+  saveToSessionStorage: function() {
+    try {
+      sessionStorage.setItem('quoteGeneratorSession', JSON.stringify(this.sessionData));
+    } catch (error) {
+      console.error('Error saving to Session Storage:', error);
+    }
+  },
+  
+  // Load session data from Session Storage
+  loadFromSessionStorage: function() {
+    try {
+      const savedSession = sessionStorage.getItem('quoteGeneratorSession');
+      if (savedSession) {
+        this.sessionData = JSON.parse(savedSession);
+        return true;
+      }
+    } catch (error) {
+      console.error('Error loading from Session Storage:', error);
+    }
+    return false;
+  },
+  
+  // Load all data from storage
+  loadFromStorage: function() {
+    const hasLocalData = this.loadFromLocalStorage();
+    const hasSessionData = this.loadFromSessionStorage();
+    
+    // If no local data, load default quotes
+    if (!hasLocalData || this.quotes.length === 0) {
+      this.loadDefaultQuotes();
+    }
+    
+    // Initialize session data if none exists
+    if (!hasSessionData) {
+      this.sessionData = {
+        lastViewedQuote: null,
+        lastViewedCategory: null,
+        viewCount: 0,
+        sessionStartTime: new Date().toLocaleTimeString()
+      };
+    }
+  },
+  
+  // Load default quotes
+  loadDefaultQuotes: function() {
+    this.quotes = [
+      {
+        text: "The only way to do great work is to love what you do.",
+        author: "Steve Jobs",
+        category: "Motivation"
+      },
+      {
+        text: "Life is what happens to you while you're busy making other plans.",
+        author: "John Lennon",
+        category: "Life"
+      },
+      {
+        text: "The future belongs to those who believe in the beauty of their dreams.",
+        author: "Eleanor Roosevelt",
+        category: "Inspiration"
+      },
+      {
+        text: "It is during our darkest moments that we must focus to see the light.",
+        author: "Aristotle",
+        category: "Perseverance"
+      },
+      {
+        text: "Whoever is happy will make others happy too.",
+        author: "Anne Frank",
+        category: "Happiness"
+      },
+      {
+        text: "You must be the change you wish to see in the world.",
+        author: "Mahatma Gandhi",
+        category: "Wisdom"
+      },
+      {
+        text: "Spread love everywhere you go. Let no one ever come to you without leaving happier.",
+        author: "Mother Teresa",
+        category: "Love"
+      },
+      {
+        text: "The only thing we have to fear is fear itself.",
+        author: "Franklin D. Roosevelt",
+        category: "Courage"
+      }
+    ];
+    
+    this.stats.totalQuotes = this.quotes.length;
+    this.stats.totalCategories = this.categories.length;
+    this.saveToLocalStorage();
+  },
+  
+  // Update session info
+  updateSessionInfo: function() {
+    this.sessionData.viewCount++;
+    this.saveToSessionStorage();
+    
+    let sessionText = `Quotes viewed this session: ${this.sessionData.viewCount}`;
+    if (this.sessionData.lastViewedQuote) {
+      sessionText += ` | Last quote: "${this.sessionData.lastViewedQuote.text.substring(0, 30)}..."`;
+    }
+    if (this.sessionData.lastViewedCategory) {
+      sessionText += ` | Last category: ${this.sessionData.lastViewedCategory}`;
+    }
+    
+    this.elements.sessionData.textContent = sessionText;
+  },
+  
+  // ====================
+  // JSON IMPORT/EXPORT
+  // ====================
+  
+  // Export quotes to JSON file
+  exportToJSON: function() {
+    try {
+      const data = {
+        quotes: this.quotes,
+        categories: this.categories,
+        exportDate: new Date().toISOString(),
+        totalQuotes: this.quotes.length,
+        totalCategories: this.categories.length
+      };
+      
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Create download link
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quotes-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      this.showStorageAlert('Quotes exported successfully!', 'success');
+    } catch (error) {
+      console.error('Error exporting quotes:', error);
+      this.showStorageAlert('Error exporting quotes', 'error');
+    }
+  },
+  
+  // Import quotes from JSON file
+  importFromJSON: function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const fileReader = new FileReader();
+    
+    fileReader.onload = (e) => {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        
+        // Validate imported data
+        if (!importedData.quotes || !Array.isArray(importedData.quotes)) {
+          throw new Error('Invalid JSON format: missing quotes array');
+        }
+        
+        // Add imported quotes
+        const newQuotes = importedData.quotes.filter(newQuote => 
+          !this.quotes.some(existingQuote => 
+            existingQuote.text === newQuote.text && 
+            existingQuote.author === newQuote.author
+          )
+        );
+        
+        if (newQuotes.length > 0) {
+          this.quotes.push(...newQuotes);
+          
+          // Add new categories if present
+          if (importedData.categories && Array.isArray(importedData.categories)) {
+            importedData.categories.forEach(category => {
+              if (!this.categories.includes(category)) {
+                this.categories.push(category);
+              }
+            });
+          }
+          
+          // Save to storage
+          this.saveToLocalStorage();
+          this.updateStats();
+          this.populateCategories();
+          this.renderCategoryFilters();
+          this.renderRecentQuotes();
+          
+          this.showStorageAlert(`Successfully imported ${newQuotes.length} new quotes!`, 'success');
+          
+          // Reset file input
+          event.target.value = '';
+        } else {
+          this.showStorageAlert('No new quotes found in the import file', 'error');
+        }
+      } catch (error) {
+        console.error('Error importing quotes:', error);
+        this.showStorageAlert(`Import failed: ${error.message}`, 'error');
+      }
+    };
+    
+    fileReader.onerror = () => {
+      this.showStorageAlert('Error reading the file', 'error');
+    };
+    
+    fileReader.readAsText(file);
+  },
+  
+  // Clear all data
+  clearAllData: function() {
+    if (confirm('Are you sure you want to clear ALL data? This will remove all quotes and reset to defaults.')) {
+      try {
+        // Clear localStorage
+        localStorage.removeItem('quoteGeneratorData');
+        
+        // Clear sessionStorage
+        sessionStorage.removeItem('quoteGeneratorSession');
+        
+        // Reset to defaults
+        this.loadDefaultQuotes();
+        this.sessionData = {
+          lastViewedQuote: null,
+          lastViewedCategory: null,
+          viewCount: 0,
+          sessionStartTime: new Date().toLocaleTimeString()
+        };
+        
+        // Update UI
+        this.updateStats();
+        this.populateCategories();
+        this.renderCategoryFilters();
+        this.renderRecentQuotes();
+        this.updateSessionInfo();
+        
+        this.showStorageAlert('All data has been cleared. Default quotes loaded.', 'success');
+        this.showRandomQuote();
+      } catch (error) {
+        console.error('Error clearing data:', error);
+        this.showStorageAlert('Error clearing data', 'error');
+      }
+    }
+  },
+  
+  // Show storage alert
+  showStorageAlert: function(message, type = 'info') {
+    this.elements.storageAlert.innerHTML = `
+      <div class="alert alert-${type}">
+        ${message}
+      </div>
+    `;
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      this.elements.storageAlert.innerHTML = '';
+    }, 5000);
+  },
+  
+  // ====================
+  // EXISTING FUNCTIONALITY (Updated)
+  // ====================
   
   // Function to display a random quote
   showRandomQuote: function() {
@@ -135,6 +416,12 @@ const QuoteGenerator = {
     
     // Display the quote
     this.displayQuote(randomQuote.text, randomQuote.author, randomQuote.category);
+    
+    // Update session data
+    this.sessionData.lastViewedQuote = randomQuote;
+    this.sessionData.lastViewedCategory = randomQuote.category;
+    this.saveToSessionStorage();
+    this.updateSessionInfo();
     
     // Update stats
     this.stats.quotesShown++;
@@ -256,7 +543,17 @@ const QuoteGenerator = {
     
     // Validate inputs
     if (!text || !author || !category) {
-      alert('Please fill in all fields');
+      this.showStorageAlert('Please fill in all fields', 'error');
+      return;
+    }
+    
+    // Check for duplicate quote
+    const isDuplicate = this.quotes.some(quote => 
+      quote.text === text && quote.author === author
+    );
+    
+    if (isDuplicate) {
+      this.showStorageAlert('This quote already exists in the collection', 'error');
       return;
     }
     
@@ -270,23 +567,30 @@ const QuoteGenerator = {
     // Add to quotes array
     this.quotes.push(newQuote);
     
+    // Add category if it's new
+    if (!this.categories.includes(category)) {
+      this.categories.push(category);
+      this.populateCategories();
+      this.renderCategoryFilters();
+    }
+    
     // Clear the form
     this.elements.newQuoteText.value = '';
     this.elements.newQuoteAuthor.value = '';
     
+    // Save to localStorage
+    this.saveToLocalStorage();
+    
     // Update stats
     this.stats.totalQuotes = this.quotes.length;
+    this.stats.totalCategories = this.categories.length;
     this.updateStats();
     
     // Render recent quotes
     this.renderRecentQuotes();
     
     // Show success message
-    this.displayQuote(
-      "Your quote has been added successfully!",
-      "System",
-      "Success"
-    );
+    this.showStorageAlert('Quote added successfully!', 'success');
     
     // If we're currently filtered to this category, update the display
     if (this.currentFilter === category || this.currentFilter === "All Categories") {
@@ -312,13 +616,13 @@ const QuoteGenerator = {
     
     // Validate input
     if (!categoryName) {
-      alert('Please enter a category name');
+      this.showStorageAlert('Please enter a category name', 'error');
       return;
     }
     
     // Check if category already exists
     if (this.categories.includes(categoryName)) {
-      alert('This category already exists');
+      this.showStorageAlert('This category already exists', 'error');
       return;
     }
     
@@ -334,96 +638,10 @@ const QuoteGenerator = {
     // Set the new category as selected in the dropdown
     this.elements.newQuoteCategory.value = categoryName;
     
+    // Save to localStorage
+    this.saveToLocalStorage();
+    
     // Hide the form
     this.hideCategoryForm();
     
-    // Update stats
-    this.stats.totalCategories = this.categories.length;
-    this.updateStats();
-    
-    // Show confirmation
-    alert(`Category "${categoryName}" has been added successfully!`);
-  },
-  
-  // Render recent quotes in the list
-  renderRecentQuotes: function() {
-    // Clear the list
-    this.elements.recentQuotes.innerHTML = '';
-    
-    // Get the last 5 quotes (or all if less than 5)
-    const recentQuotes = this.quotes.slice(-5).reverse();
-    
-    // Create a list item for each quote
-    recentQuotes.forEach((quote, index) => {
-      const quoteItem = document.createElement('div');
-      quoteItem.className = 'quote-item';
-      
-      const quoteText = document.createElement('div');
-      quoteText.className = 'quote-item-text';
-      quoteText.textContent = `"${quote.text}"`;
-      
-      const quoteMeta = document.createElement('div');
-      quoteMeta.className = 'quote-item-meta';
-      quoteMeta.innerHTML = `
-        <span>${quote.author}</span>
-        <span>${quote.category}</span>
-      `;
-      
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'delete-btn';
-      deleteBtn.textContent = 'Delete';
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.deleteQuote(this.quotes.length - 1 - index);
-      });
-      
-      quoteItem.appendChild(quoteText);
-      quoteItem.appendChild(quoteMeta);
-      quoteItem.appendChild(deleteBtn);
-      
-      this.elements.recentQuotes.appendChild(quoteItem);
-    });
-    
-    // If no quotes exist
-    if (this.quotes.length === 0) {
-      const emptyMessage = document.createElement('div');
-      emptyMessage.className = 'quote-item';
-      emptyMessage.textContent = 'No quotes yet. Add your first quote above!';
-      this.elements.recentQuotes.appendChild(emptyMessage);
-    }
-  },
-  
-  // Delete a quote
-  deleteQuote: function(index) {
-    if (confirm('Are you sure you want to delete this quote?')) {
-      // Remove the quote from the array
-      this.quotes.splice(index, 1);
-      
-      // Update stats
-      this.stats.totalQuotes = this.quotes.length;
-      this.updateStats();
-      
-      // Re-render recent quotes
-      this.renderRecentQuotes();
-      
-      // Show a message
-      this.displayQuote(
-        "Quote deleted successfully.",
-        "System",
-        "Info"
-      );
-    }
-  },
-  
-  // Update statistics display
-  updateStats: function() {
-    this.elements.totalQuotes.textContent = this.quotes.length;
-    this.elements.totalCategories.textContent = this.categories.length;
-    this.elements.quotesShown.textContent = this.stats.quotesShown;
-  }
-};
-
-// Initialize the application when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  QuoteGenerator.init();
-});
+    //
