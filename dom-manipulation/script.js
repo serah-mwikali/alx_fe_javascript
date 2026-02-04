@@ -1,11 +1,13 @@
-// Quotes array
-const quotes = [
+let quotes = JSON.parse(localStorage.getItem("quotes")) || [
   { text: "Success is not final; failure is not fatal.", category: "Motivation" },
   { text: "Talk is cheap. Show me the code.", category: "Programming" },
   { text: "Discipline beats motivation.", category: "Life" }
 ];
 
-// Display random quote
+function saveQuotes() {
+  localStorage.setItem("quotes", JSON.stringify(quotes));
+}
+
 function showRandomQuote() {
   const quoteDisplay = document.getElementById("quoteDisplay");
   quoteDisplay.innerHTML = "";
@@ -21,25 +23,23 @@ function showRandomQuote() {
 
   quoteDisplay.appendChild(quoteText);
   quoteDisplay.appendChild(quoteCategory);
+
+  sessionStorage.setItem("lastViewedQuote", JSON.stringify(quote));
 }
 
-// REQUIRED by checker
 function createAddQuoteForm() {
   const formDiv = document.createElement("div");
 
   const textInput = document.createElement("input");
   textInput.id = "newQuoteText";
-  textInput.type = "text";
   textInput.placeholder = "Enter a new quote";
 
   const categoryInput = document.createElement("input");
   categoryInput.id = "newQuoteCategory";
-  categoryInput.type = "text";
   categoryInput.placeholder = "Enter quote category";
 
   const addButton = document.createElement("button");
   addButton.textContent = "Add Quote";
-
   addButton.addEventListener("click", addQuote);
 
   formDiv.appendChild(textInput);
@@ -49,7 +49,6 @@ function createAddQuoteForm() {
   document.body.appendChild(formDiv);
 }
 
-// Add quote logic
 function addQuote() {
   const text = document.getElementById("newQuoteText").value;
   const category = document.getElementById("newQuoteCategory").value;
@@ -60,17 +59,42 @@ function addQuote() {
   }
 
   quotes.push({ text: text, category: category });
-
+  saveQuotes();
   showRandomQuote();
 
   document.getElementById("newQuoteText").value = "";
   document.getElementById("newQuoteCategory").value = "";
 }
 
-// REQUIRED explicit event listener
+document.getElementById("exportQuotes").addEventListener("click", function () {
+  const blob = new Blob([JSON.stringify(quotes, null, 2)], {
+    type: "application/json"
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "quotes.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+function importFromJsonFile(event) {
+  const fileReader = new FileReader();
+
+  fileReader.onload = function (event) {
+    const importedQuotes = JSON.parse(event.target.result);
+    quotes.push(...importedQuotes);
+    saveQuotes();
+    showRandomQuote();
+    alert("Quotes imported successfully!");
+  };
+
+  fileReader.readAsText(event.target.files[0]);
+}
+
 document.getElementById("newQuote").addEventListener("click", showRandomQuote);
 
-// Initialize
 createAddQuoteForm();
 showRandomQuote();
 
