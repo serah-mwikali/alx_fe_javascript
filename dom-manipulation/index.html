@@ -4,87 +4,221 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dynamic Quote Generator</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-    body { background-color: #f5f7fa; padding: 20px; }
-    .container { max-width: 1200px; margin: 0 auto; }
-    header { text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; border-radius: 10px; }
-    .panel { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    #quoteDisplay { min-height: 200px; padding: 20px; background-color: #f9f9ff; border-radius: 8px; margin-bottom: 20px; text-align: center; }
-    .quote-text { font-size: 1.5rem; font-style: italic; margin-bottom: 10px; }
-    .quote-author { font-weight: bold; margin-top: 10px; }
-    .quote-category { display: inline-block; background-color: #eef4ff; padding: 5px 15px; border-radius: 20px; margin-top: 10px; }
-    button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background-color: #2575fc; color: white; }
-    button:hover { background-color: #1c68e3; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; }
-    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-    .storage-actions { background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px; }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
     <header>
       <h1>Dynamic Quote Generator</h1>
-      <p>Advanced filtering with Web Storage</p>
+      <p>Filter quotes by category with Web Storage</p>
     </header>
     
-    <div class="panel">
-      <h2>Quote Display</h2>
-      <div id="quoteDisplay">
-        <p class="quote-text">Click "Show New Quote" to get started!</p>
-        <p class="quote-author">- System</p>
-        <span class="quote-category">Welcome</span>
-      </div>
+    <main>
+      <section class="quote-display">
+        <h2>Quote Display</h2>
+        <div id="quoteDisplay">
+          <p class="quote-text">"Click Show New Quote to begin"</p>
+          <p class="quote-author">- System</p>
+          <span class="quote-category">Welcome</span>
+        </div>
+        
+        <div class="controls">
+          <button id="newQuote">Show New Quote</button>
+          
+          <div class="filter-control">
+            <label for="categoryFilter">Filter by Category:</label>
+            <!-- REQUIRED: Dropdown for filtering with onchange -->
+            <select id="categoryFilter" onchange="filterQuote()">
+              <option value="all">All Categories</option>
+              <!-- Categories populated by populateCategories() -->
+            </select>
+          </div>
+        </div>
+      </section>
       
-      <button id="newQuote">Show New Quote</button>
+      <section class="add-quote">
+        <h2>Add New Quote</h2>
+        <form id="addQuoteForm">
+          <div class="form-group">
+            <label for="newQuoteText">Quote Text:</label>
+            <textarea id="newQuoteText" placeholder="Enter a new quote" required></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="newQuoteAuthor">Author:</label>
+            <input id="newQuoteAuthor" type="text" placeholder="Enter quote author" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="newQuoteCategory">Category:</label>
+            <select id="newQuoteCategory" required>
+              <!-- Options populated by populateCategories() -->
+            </select>
+          </div>
+          
+          <button type="button" id="addQuoteBtn" onclick="addQuote()">Add Quote</button>
+        </form>
+      </section>
       
-      <div class="form-group" style="margin-top: 20px;">
-        <label for="categoryFilter">Filter by Category:</label>
-        <!-- REQUIRED: Dropdown for filtering -->
-        <select id="categoryFilter">
-          <option value="all">All Categories</option>
-          <!-- Categories will be populated dynamically by populateCategories() -->
-        </select>
-      </div>
-    </div>
-    
-    <div class="panel">
-      <h2>Add New Quote</h2>
-      <form id="addQuoteForm">
-        <div class="form-group">
-          <label for="newQuoteText">Quote Text *</label>
-          <textarea id="newQuoteText" placeholder="Enter quote text" required></textarea>
+      <section class="data-management">
+        <h2>Data Management</h2>
+        <div class="import-export">
+          <div class="form-group">
+            <label for="importFile">Import Quotes (JSON):</label>
+            <!-- REQUIRED: File input for JSON import -->
+            <input type="file" id="importFile" accept=".json" onchange="importFromJsonFile(event)">
+          </div>
+          <button onclick="exportToJson()" id="exportBtn">Export Quotes (JSON)</button>
         </div>
-        
-        <div class="form-group">
-          <label for="newQuoteAuthor">Author *</label>
-          <input id="newQuoteAuthor" type="text" placeholder="Enter author name" required>
-        </div>
-        
-        <div class="form-group">
-          <label for="newQuoteCategory">Category *</label>
-          <select id="newQuoteCategory" required>
-            <!-- Options will be populated dynamically -->
-          </select>
-        </div>
-        
-        <button type="button" id="addQuoteBtn">Add Quote</button>
-      </form>
-    </div>
-    
-    <div class="panel">
-      <div class="storage-actions">
-        <h3>Data Management</h3>
-        <div class="form-group">
-          <label for="importFile">Import Quotes from JSON:</label>
-          <!-- REQUIRED: File input for JSON import -->
-          <input type="file" id="importFile" accept=".json">
-        </div>
-      </div>
-    </div>
+      </section>
+    </main>
   </div>
   
   <script src="script.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f5f7fa;
+      color: #333;
+      line-height: 1.6;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      color: white;
+      border-radius: 10px;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    
+    section {
+      background: white;
+      border-radius: 10px;
+      padding: 25px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    h2 {
+      color: #2575fc;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+    
+    #quoteDisplay {
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 30px;
+      background-color: #f9f9ff;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 5px solid #6a11cb;
+    }
+    
+    .quote-text {
+      font-size: 1.5rem;
+      font-style: italic;
+      color: #444;
+      margin-bottom: 15px;
+      line-height: 1.5;
+    }
+    
+    .quote-author {
+      font-weight: bold;
+      margin-top: 10px;
+      color: #666;
+    }
+    
+    .quote-category {
+      display: inline-block;
+      background-color: #eef4ff;
+      color: #2575fc;
+      padding: 5px 15px;
+      border-radius: 20px;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+    
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      background-color: #2575fc;
+      color: white;
+      transition: all 0.3s ease;
+    }
+    
+    button:hover {
+      background-color: #1c68e3;
+      transform: translateY(-2px);
+    }
+    
+    .filter-control {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    label {
+      font-weight: 600;
+      color: #444;
+    }
+    
+    select, input, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+    
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .import-export {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+  </style>
 </body>
 </html>
