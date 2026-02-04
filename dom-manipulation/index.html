@@ -4,373 +4,93 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dynamic Quote Generator with Server Sync</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
-    body {
-      background-color: #f5f7fa;
-      color: #333;
-      line-height: 1.6;
-      padding: 20px;
-    }
-    
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    
-    header {
-      text-align: center;
-      margin-bottom: 30px;
-      padding: 20px;
-      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-      color: white;
-      border-radius: 10px;
-    }
-    
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 10px;
-    }
-    
-    section {
-      background: white;
-      border-radius: 10px;
-      padding: 25px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-    
-    h2 {
-      color: #2575fc;
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #f0f0f0;
-    }
-    
-    #quoteDisplay {
-      min-height: 200px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      padding: 30px;
-      background-color: #f9f9ff;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      border-left: 5px solid #6a11cb;
-    }
-    
-    .quote-text {
-      font-size: 1.5rem;
-      font-style: italic;
-      color: #444;
-      margin-bottom: 15px;
-      line-height: 1.5;
-    }
-    
-    .quote-author {
-      font-weight: bold;
-      margin-top: 10px;
-      color: #666;
-    }
-    
-    .quote-category {
-      display: inline-block;
-      background-color: #eef4ff;
-      color: #2575fc;
-      padding: 5px 15px;
-      border-radius: 20px;
-      margin-top: 10px;
-      font-size: 0.9rem;
-    }
-    
-    .controls {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-    
-    button {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 600;
-      background-color: #2575fc;
-      color: white;
-      transition: all 0.3s ease;
-    }
-    
-    button:hover {
-      background-color: #1c68e3;
-      transform: translateY(-2px);
-    }
-    
-    .filter-control {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    
-    label {
-      font-weight: 600;
-      color: #444;
-    }
-    
-    select, input, textarea {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      font-size: 1rem;
-    }
-    
-    textarea {
-      min-height: 100px;
-      resize: vertical;
-    }
-    
-    .form-group {
-      margin-bottom: 20px;
-    }
-    
-    /* Sync Controls */
-    .sync-controls {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-    }
-    
-    .sync-btn {
-      background-color: #20c997;
-    }
-    
-    .sync-btn:hover {
-      background-color: #1ba87e;
-    }
-    
-    /* Notification */
-    .notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 15px 20px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 1000;
-      animation: slideIn 0.3s ease-out;
-      display: none;
-    }
-    
-    .notification.show {
-      display: block;
-    }
-    
-    .notification.success {
-      border-left: 4px solid #2ed573;
-    }
-    
-    .notification.warning {
-      border-left: 4px solid #ffa502;
-    }
-    
-    .notification.error {
-      border-left: 4px solid #ff4757;
-    }
-    
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-    
-    /* Sync Status */
-    .sync-status {
-      background: #f8f9fa;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 15px;
-      border: 1px solid #e9ecef;
-    }
-    
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background-color: #6c757d;
-    }
-    
-    .status-dot.syncing {
-      background-color: #ffa502;
-      animation: pulse 1s infinite;
-    }
-    
-    .status-dot.synced {
-      background-color: #2ed573;
-    }
-    
-    .status-dot.error {
-      background-color: #ff4757;
-    }
-    
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-    }
-    
-    /* Conflict Resolution */
-    .conflict-resolver {
-      background: #fff3cd;
-      border: 1px solid #ffeaa7;
-      border-radius: 8px;
-      padding: 15px;
-      margin-top: 15px;
-      display: none;
-    }
-    
-    .conflict-resolver.show {
-      display: block;
-    }
-    
-    .conflict-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    
-    .resolve-btn {
-      background-color: #6f42c1;
-    }
-    
-    .resolve-btn:hover {
-      background-color: #5a32a3;
-    }
-    
-    .secondary-btn {
-      background-color: #6c757d;
-    }
-    
-    .secondary-btn:hover {
-      background-color: #5a6268;
-    }
-  </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Dynamic Quote Generator</h1>
-      <p>Server Synchronization & Conflict Resolution</p>
+  <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    <header style="text-align: center; margin-bottom: 30px;">
+      <h1>Dynamic Quote Generator with Server Sync</h1>
     </header>
     
     <!-- Notification Area -->
-    <div id="notification" class="notification"></div>
+    <div id="notification" style="display: none; position: fixed; top: 20px; right: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000;"></div>
     
-    <section class="quote-display">
+    <!-- Conflict Resolution -->
+    <div id="conflictResolver" style="display: none; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 15px 0;">
+      <h3>Conflict Detected!</h3>
+      <p id="conflictMessage">Server data differs from your local data. Please choose how to resolve:</p>
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button onclick="resolveConflict('server')" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Use Server Data</button>
+        <button onclick="resolveConflict('local')" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">Keep Local Data</button>
+        <button onclick="resolveConflict('merge')" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">Merge Both</button>
+      </div>
+    </div>
+    
+    <div style="background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
       <h2>Quote Display</h2>
-      <div id="quoteDisplay">
-        <p class="quote-text">"Click Show New Quote to begin"</p>
-        <p class="quote-author">- System</p>
-        <span class="quote-category">Welcome</span>
+      <div id="quoteDisplay" style="min-height: 200px; padding: 20px; background: #f8f9fa; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+        <p id="quoteText" style="font-size: 1.2rem; font-style: italic; margin-bottom: 10px;">"Click Show New Quote to begin"</p>
+        <p id="quoteAuthor" style="font-weight: bold; margin-bottom: 10px;">- System</p>
+        <span id="quoteCategory" style="background: #e9ecef; padding: 5px 10px; border-radius: 15px; font-size: 0.9rem;">Welcome</span>
       </div>
       
-      <div class="controls">
-        <button id="newQuote">Show New Quote</button>
-        
-        <div class="filter-control">
-          <label for="categoryFilter">Filter by Category:</label>
-          <select id="categoryFilter" onchange="filterQuote()">
-            <option value="all">All Categories</option>
-          </select>
-        </div>
-      </div>
+      <button id="newQuote" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">Show New Quote</button>
       
-      <!-- Conflict Resolution -->
-      <div id="conflictResolver" class="conflict-resolver">
-        <h3>Conflict Detected!</h3>
-        <p id="conflictMessage">Server data differs from your local data. How would you like to resolve?</p>
-        <div class="conflict-actions">
-          <button onclick="resolveConflict('server')" class="resolve-btn">Use Server Data</button>
-          <button onclick="resolveConflict('local')" class="secondary-btn">Keep Local Data</button>
-          <button onclick="resolveConflict('merge')" class="secondary-btn">Merge Both</button>
-        </div>
-      </div>
-    </section>
+      <select id="categoryFilter" onchange="filterQuote()" style="padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
+        <option value="all">All Categories</option>
+      </select>
+    </div>
     
-    <section class="add-quote">
+    <div style="background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
       <h2>Add New Quote</h2>
-      <form id="addQuoteForm">
-        <div class="form-group">
-          <label for="newQuoteText">Quote Text:</label>
-          <textarea id="newQuoteText" placeholder="Enter a new quote" required></textarea>
-        </div>
-        
-        <div class="form-group">
-          <label for="newQuoteAuthor">Author:</label>
-          <input id="newQuoteAuthor" type="text" placeholder="Enter quote author" required>
-        </div>
-        
-        <div class="form-group">
-          <label for="newQuoteCategory">Category:</label>
-          <select id="newQuoteCategory" required>
-          </select>
-        </div>
-        
-        <button type="button" id="addQuoteBtn" onclick="addQuote()">Add Quote</button>
-      </form>
-    </section>
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Quote Text:</label>
+        <textarea id="newQuoteText" placeholder="Enter a new quote" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" required></textarea>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Author:</label>
+        <input id="newQuoteAuthor" type="text" placeholder="Enter author name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" required>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Category:</label>
+        <select id="newQuoteCategory" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" required>
+        </select>
+      </div>
+      
+      <button id="addQuoteBtn" onclick="addQuote()" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">Add Quote</button>
+    </div>
     
-    <section class="sync-panel">
+    <div style="background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
       <h2>Server Synchronization</h2>
       
-      <div class="sync-status">
-        <div class="status-indicator">
-          <div id="statusDot" class="status-dot"></div>
+      <div id="syncStatus" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+          <div id="statusDot" style="width: 10px; height: 10px; border-radius: 50%; background: #6c757d;"></div>
           <span id="statusText">Ready to sync</span>
         </div>
         
-        <div class="sync-controls">
-          <button id="syncBtn" class="sync-btn" onclick="syncQuotes()">Sync Now</button>
-          <button id="toggleSync" class="secondary-btn" onclick="toggleAutoSync()">Enable Auto Sync</button>
+        <div style="display: flex; gap: 10px;">
+          <button id="syncBtn" onclick="syncQuotes()" style="padding: 10px 20px; background: #20c997; color: white; border: none; border-radius: 5px; cursor: pointer;">Sync Now</button>
+          <button id="toggleSync" onclick="toggleAutoSync()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">Enable Auto Sync</button>
         </div>
         
-        <div class="form-group" style="margin-top: 15px;">
+        <div style="margin-top: 15px;">
           <label>
             <input type="checkbox" id="autoSyncCheckbox"> Auto sync every 30 seconds
           </label>
         </div>
       </div>
-    </section>
+    </div>
     
-    <section class="data-management">
+    <div style="background: white; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
       <h2>Data Management</h2>
-      <div class="form-group">
-        <label for="importFile">Import Quotes (JSON):</label>
-        <input type="file" id="importFile" accept=".json" onchange="importFromJsonFile(event)">
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Import Quotes (JSON):</label>
+        <input type="file" id="importFile" accept=".json" onchange="importFromJsonFile(event)" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
       </div>
-      <button onclick="exportToJson()" id="exportBtn">Export Quotes</button>
-    </section>
+      <button onclick="exportToJson()" style="padding: 10px 20px; background: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer;">Export Quotes</button>
+    </div>
   </div>
   
   <script src="script.js"></script>
