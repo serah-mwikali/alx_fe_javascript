@@ -3,530 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dynamic Quote Generator with Filtering</title>
+  <title>Dynamic Quote Generator</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
-    body {
-      background-color: #f5f7fa;
-      color: #333;
-      line-height: 1.6;
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    
-    header {
-      text-align: center;
-      margin-bottom: 40px;
-      padding: 20px;
-      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-      color: white;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    
-    h1 {
-      font-size: 2.8rem;
-      margin-bottom: 10px;
-    }
-    
-    .subtitle {
-      font-size: 1.2rem;
-      opacity: 0.9;
-    }
-    
-    .container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 30px;
-    }
-    
-    @media (max-width: 768px) {
-      .container {
-        grid-template-columns: 1fr;
-      }
-    }
-    
-    .panel {
-      background: white;
-      border-radius: 10px;
-      padding: 25px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-    
-    .panel h2 {
-      color: #2575fc;
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #f0f0f0;
-    }
-    
-    #quoteDisplay {
-      min-height: 300px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      padding: 30px;
-      background-color: #f9f9ff;
-      border-radius: 8px;
-      border-left: 5px solid #6a11cb;
-      margin-bottom: 20px;
-    }
-    
-    .quote-text {
-      font-size: 1.8rem;
-      font-style: italic;
-      color: #444;
-      margin-bottom: 15px;
-      line-height: 1.5;
-    }
-    
-    .quote-author, .quote-category {
-      font-size: 1.1rem;
-      color: #666;
-    }
-    
-    .quote-author {
-      font-weight: bold;
-      margin-top: 15px;
-    }
-    
-    .quote-category {
-      display: inline-block;
-      background-color: #eef4ff;
-      padding: 5px 15px;
-      border-radius: 20px;
-      margin-top: 10px;
-      font-size: 0.9rem;
-    }
-    
-    .buttons {
-      display: flex;
-      gap: 15px;
-      margin-top: 20px;
-      flex-wrap: wrap;
-    }
-    
-    button {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 600;
-      transition: all 0.3s ease;
-    }
-    
-    #newQuote {
-      background-color: #6a11cb;
-      color: white;
-      flex-grow: 1;
-    }
-    
-    #newQuote:hover {
-      background-color: #5809b5;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(106, 17, 203, 0.3);
-    }
-    
-    .category-btn {
-      background-color: #2575fc;
-      color: white;
-    }
-    
-    .category-btn:hover {
-      background-color: #1c68e3;
-      transform: translateY(-2px);
-    }
-    
-    .category-btn.active {
-      background-color: #6a11cb;
-      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
-    }
-    
-    .filter-section {
-      margin-top: 20px;
-      padding: 20px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      border: 1px solid #e9ecef;
-    }
-    
-    .filter-section h3 {
-      color: #495057;
-      margin-bottom: 15px;
-      font-size: 1.2rem;
-    }
-    
-    .filter-controls {
-      display: flex;
-      gap: 15px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    
-    .filter-group {
-      flex: 1;
-      min-width: 200px;
-    }
-    
-    .filter-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: #495057;
-    }
-    
-    select {
-      width: 100%;
-      padding: 10px 15px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      font-size: 1rem;
-      background-color: white;
-      cursor: pointer;
-      transition: border-color 0.3s;
-    }
-    
-    select:focus {
-      outline: none;
-      border-color: #6a11cb;
-      box-shadow: 0 0 0 3px rgba(106, 17, 203, 0.1);
-    }
-    
-    #categoryButtons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 20px;
-    }
-    
-    .category-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background-color: #eef4ff;
-      color: #2575fc;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .category-badge:hover {
-      background-color: #2575fc;
-      color: white;
-      transform: translateY(-2px);
-    }
-    
-    .category-badge.active {
-      background-color: #6a11cb;
-      color: white;
-    }
-    
-    .category-count {
-      background-color: rgba(255, 255, 255, 0.2);
-      padding: 2px 6px;
-      border-radius: 10px;
-      font-size: 0.8rem;
-    }
-    
-    .form-group {
-      margin-bottom: 20px;
-    }
-    
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: #444;
-    }
-    
-    input, textarea, select {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      font-size: 1rem;
-      transition: border-color 0.3s;
-    }
-    
-    input:focus, textarea:focus, select:focus {
-      outline: none;
-      border-color: #6a11cb;
-    }
-    
-    textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
-    
-    #addQuoteBtn {
-      background-color: #20c997;
-      color: white;
-      width: 100%;
-      padding: 14px;
-      font-size: 1.1rem;
-    }
-    
-    #addQuoteBtn:hover {
-      background-color: #1ba87e;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(32, 201, 151, 0.3);
-    }
-    
-    #newCategoryBtn {
-      background-color: #ff7b00;
-      color: white;
-      margin-top: 10px;
-      width: 100%;
-    }
-    
-    #newCategoryBtn:hover {
-      background-color: #e66a00;
-    }
-    
-    .stats {
-      display: flex;
-      justify-content: space-around;
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 1px solid #eee;
-    }
-    
-    .stat-item {
-      text-align: center;
-    }
-    
-    .stat-value {
-      font-size: 2rem;
-      font-weight: bold;
-      color: #6a11cb;
-    }
-    
-    .stat-label {
-      font-size: 0.9rem;
-      color: #777;
-    }
-    
-    .quote-list {
-      margin-top: 20px;
-      max-height: 300px;
-      overflow-y: auto;
-      border: 1px solid #eee;
-      border-radius: 5px;
-      padding: 10px;
-    }
-    
-    .quote-item {
-      padding: 15px;
-      border-bottom: 1px solid #eee;
-      transition: background-color 0.2s;
-    }
-    
-    .quote-item:hover {
-      background-color: #f9f9ff;
-    }
-    
-    .quote-item:last-child {
-      border-bottom: none;
-    }
-    
-    .quote-item-text {
-      font-style: italic;
-      margin-bottom: 8px;
-    }
-    
-    .quote-item-meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.85rem;
-      color: #777;
-    }
-    
-    .delete-btn {
-      background-color: #ff4757;
-      color: white;
-      padding: 5px 10px;
-      font-size: 0.8rem;
-      margin-top: 5px;
-    }
-    
-    .delete-btn:hover {
-      background-color: #ff3742;
-    }
-    
-    .hidden {
-      display: none !important;
-    }
-    
-    #newCategoryForm {
-      margin-top: 15px;
-      padding: 15px;
-      background-color: #f9f9ff;
-      border-radius: 5px;
-      border: 1px dashed #6a11cb;
-    }
-    
-    .storage-actions {
-      background-color: #f8f9fa;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 20px;
-      border: 1px solid #e9ecef;
-    }
-    
-    .storage-actions h3 {
-      color: #495057;
-      margin-bottom: 15px;
-      font-size: 1.2rem;
-    }
-    
-    .storage-buttons {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    
-    .export-btn {
-      background-color: #17a2b8;
-      color: white;
-    }
-    
-    .export-btn:hover {
-      background-color: #138496;
-    }
-    
-    .import-btn {
-      background-color: #6f42c1;
-      color: white;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .import-btn:hover {
-      background-color: #5a32a3;
-    }
-    
-    .import-file-input {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      cursor: pointer;
-    }
-    
-    .clear-btn {
-      background-color: #dc3545;
-      color: white;
-    }
-    
-    .clear-btn:hover {
-      background-color: #c82333;
-    }
-    
-    .session-info {
-      background-color: #e7f5ff;
-      padding: 10px 15px;
-      border-radius: 5px;
-      margin-top: 15px;
-      border-left: 4px solid #339af0;
-      font-size: 0.9rem;
-    }
-    
-    footer {
-      text-align: center;
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 1px solid #ddd;
-      color: #777;
-      font-size: 0.9rem;
-    }
-    
-    .alert {
-      padding: 12px 15px;
-      border-radius: 5px;
-      margin: 10px 0;
-      font-weight: 500;
-    }
-    
-    .alert-success {
-      background-color: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
-    }
-    
-    .alert-error {
-      background-color: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
-    }
-    
-    .storage-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 0.85rem;
-      color: #6c757d;
-      margin-top: 5px;
-    }
-    
-    .storage-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    
-    .local-storage {
-      background-color: #28a745;
-    }
-    
-    .session-storage {
-      background-color: #007bff;
-    }
-    
-    .filtered-count {
-      font-size: 0.9rem;
-      color: #6c757d;
-      margin-top: 5px;
-      text-align: center;
-    }
-    
-    .filter-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-    }
-    
-    .reset-filter {
-      background-color: #6c757d;
-      color: white;
-    }
-    
-    .reset-filter:hover {
-      background-color: #5a6268;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { background-color: #f5f7fa; padding: 20px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; border-radius: 10px; }
+    .panel { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    #quoteDisplay { min-height: 200px; padding: 20px; background-color: #f9f9ff; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+    .quote-text { font-size: 1.5rem; font-style: italic; margin-bottom: 10px; }
+    .quote-author { font-weight: bold; margin-top: 10px; }
+    .quote-category { display: inline-block; background-color: #eef4ff; padding: 5px 15px; border-radius: 20px; margin-top: 10px; }
+    button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background-color: #2575fc; color: white; }
+    button:hover { background-color: #1c68e3; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+    .storage-actions { background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Dynamic Quote Generator with Advanced Filtering</h1>
-    <p class="subtitle">Web Storage, JSON Handling & Dynamic Category Filtering</p>
-  </header>
-  
   <div class="container">
+    <header>
+      <h1>Dynamic Quote Generator</h1>
+      <p>Advanced filtering with Web Storage</p>
+    </header>
+    
     <div class="panel">
       <h2>Quote Display</h2>
       <div id="quoteDisplay">
@@ -535,85 +37,15 @@
         <span class="quote-category">Welcome</span>
       </div>
       
-      <div class="buttons">
-        <button id="newQuote">Show New Quote</button>
-        <button id="randomCategory" class="category-btn">Random Category</button>
-        <button id="allCategories" class="category-btn active">All Categories</button>
-      </div>
+      <button id="newQuote">Show New Quote</button>
       
-      <!-- Enhanced Filtering Section -->
-      <div class="filter-section">
-        <h3>Filter Quotes by Category</h3>
-        
-        <div class="filter-controls">
-          <div class="filter-group">
-            <label for="categoryFilter">Select Category:</label>
-            <select id="categoryFilter">
-              <option value="all">All Categories</option>
-              <!-- Categories will be populated dynamically -->
-            </select>
-          </div>
-          
-          <div class="filter-group">
-            <label for="sortBy">Sort By:</label>
-            <select id="sortBy">
-              <option value="random">Random</option>
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="author">Author (A-Z)</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="filter-actions">
-          <button id="applyFilter" class="category-btn">Apply Filter</button>
-          <button id="resetFilter" class="reset-filter">Reset Filter</button>
-        </div>
-        
-        <div id="categoryButtons" class="category-buttons">
-          <!-- Category badges will be dynamically generated here -->
-        </div>
-        
-        <p id="filteredCount" class="filtered-count">Showing all quotes</p>
-      </div>
-      
-      <!-- Session Storage Info -->
-      <div id="sessionInfo" class="session-info">
-        <strong>Session Info:</strong> 
-        <span id="sessionData">Loading session data...</span>
-      </div>
-      
-      <div class="stats">
-        <div class="stat-item">
-          <div class="stat-value" id="totalQuotes">0</div>
-          <div class="stat-label">Total Quotes</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value" id="totalCategories">0</div>
-          <div class="stat-label">Categories</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value" id="filteredQuotes">0</div>
-          <div class="stat-label">Filtered Quotes</div>
-        </div>
-      </div>
-      
-      <!-- Web Storage Actions -->
-      <div class="storage-actions">
-        <h3>Data Management</h3>
-        <div class="storage-buttons">
-          <button id="exportBtn" class="export-btn">Export Quotes (JSON)</button>
-          <button id="importBtn" class="import-btn">
-            Import Quotes (JSON)
-            <input type="file" id="importFile" class="import-file-input" accept=".json">
-          </button>
-          <button id="clearStorageBtn" class="clear-btn">Clear All Data</button>
-        </div>
-        <div class="storage-indicator">
-          <span class="storage-dot local-storage"></span> Local Storage 
-          <span class="storage-dot session-storage"></span> Session Storage
-        </div>
-        <div id="storageAlert"></div>
+      <div class="form-group" style="margin-top: 20px;">
+        <label for="categoryFilter">Filter by Category:</label>
+        <!-- REQUIRED: Dropdown for filtering -->
+        <select id="categoryFilter">
+          <option value="all">All Categories</option>
+          <!-- Categories will be populated dynamically by populateCategories() -->
+        </select>
       </div>
     </div>
     
@@ -622,7 +54,7 @@
       <form id="addQuoteForm">
         <div class="form-group">
           <label for="newQuoteText">Quote Text *</label>
-          <textarea id="newQuoteText" placeholder="Enter your inspirational quote here..." required></textarea>
+          <textarea id="newQuoteText" placeholder="Enter quote text" required></textarea>
         </div>
         
         <div class="form-group">
@@ -633,34 +65,25 @@
         <div class="form-group">
           <label for="newQuoteCategory">Category *</label>
           <select id="newQuoteCategory" required>
-            <!-- Options will be dynamically populated -->
+            <!-- Options will be populated dynamically -->
           </select>
         </div>
         
         <button type="button" id="addQuoteBtn">Add Quote</button>
       </form>
-      
-      <button id="newCategoryBtn">+ Add New Category</button>
-      
-      <div id="newCategoryForm" class="hidden">
+    </div>
+    
+    <div class="panel">
+      <div class="storage-actions">
+        <h3>Data Management</h3>
         <div class="form-group">
-          <label for="newCategoryName">New Category Name *</label>
-          <input id="newCategoryName" type="text" placeholder="Enter new category name">
+          <label for="importFile">Import Quotes from JSON:</label>
+          <!-- REQUIRED: File input for JSON import -->
+          <input type="file" id="importFile" accept=".json">
         </div>
-        <button type="button" id="saveCategoryBtn">Save Category</button>
-        <button type="button" id="cancelCategoryBtn">Cancel</button>
-      </div>
-      
-      <h2 style="margin-top: 30px;">Recent Quotes</h2>
-      <div id="recentQuotes" class="quote-list">
-        <!-- Recent quotes will be dynamically added here -->
       </div>
     </div>
   </div>
-  
-  <footer>
-    <p>Dynamic Quote Generator | Advanced Filtering with Web Storage & JSON</p>
-  </footer>
   
   <script src="script.js"></script>
 </body>
