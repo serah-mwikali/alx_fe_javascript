@@ -3,96 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dynamic Quote Generator with Server Sync</title>
+  <title>Dynamic Quote Generator</title>
 </head>
 <body>
-  <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
-    <header style="text-align: center; margin-bottom: 30px;">
-      <h1>Dynamic Quote Generator with Server Sync</h1>
-    </header>
-    
-    <!-- Notification Area -->
-    <div id="notification" style="display: none; position: fixed; top: 20px; right: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000;"></div>
-    
-    <!-- Conflict Resolution -->
-    <div id="conflictResolver" style="display: none; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 15px 0;">
-      <h3>Conflict Detected!</h3>
-      <p id="conflictMessage">Server data differs from your local data. Please choose how to resolve:</p>
-      <div style="display: flex; gap: 10px; margin-top: 10px;">
-        <button onclick="resolveConflict('server')" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Use Server Data</button>
-        <button onclick="resolveConflict('local')" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">Keep Local Data</button>
-        <button onclick="resolveConflict('merge')" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">Merge Both</button>
-      </div>
-    </div>
-    
-    <div style="background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-      <h2>Quote Display</h2>
-      <div id="quoteDisplay" style="min-height: 200px; padding: 20px; background: #f8f9fa; border-radius: 8px; margin-bottom: 20px; text-align: center;">
-        <p id="quoteText" style="font-size: 1.2rem; font-style: italic; margin-bottom: 10px;">"Click Show New Quote to begin"</p>
-        <p id="quoteAuthor" style="font-weight: bold; margin-bottom: 10px;">- System</p>
-        <span id="quoteCategory" style="background: #e9ecef; padding: 5px 10px; border-radius: 15px; font-size: 0.9rem;">Welcome</span>
-      </div>
-      
-      <button id="newQuote" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">Show New Quote</button>
-      
-      <select id="categoryFilter" onchange="filterQuote()" style="padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
-        <option value="all">All Categories</option>
-      </select>
-    </div>
-    
-    <div style="background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-      <h2>Add New Quote</h2>
-      <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Quote Text:</label>
-        <textarea id="newQuoteText" placeholder="Enter a new quote" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" required></textarea>
-      </div>
-      
-      <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Author:</label>
-        <input id="newQuoteAuthor" type="text" placeholder="Enter author name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" required>
-      </div>
-      
-      <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Category:</label>
-        <select id="newQuoteCategory" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" required>
-        </select>
-      </div>
-      
-      <button id="addQuoteBtn" onclick="addQuote()" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">Add Quote</button>
-    </div>
-    
-    <div style="background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-      <h2>Server Synchronization</h2>
-      
-      <div id="syncStatus" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-          <div id="statusDot" style="width: 10px; height: 10px; border-radius: 50%; background: #6c757d;"></div>
-          <span id="statusText">Ready to sync</span>
-        </div>
-        
-        <div style="display: flex; gap: 10px;">
-          <button id="syncBtn" onclick="syncQuotes()" style="padding: 10px 20px; background: #20c997; color: white; border: none; border-radius: 5px; cursor: pointer;">Sync Now</button>
-          <button id="toggleSync" onclick="toggleAutoSync()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">Enable Auto Sync</button>
-        </div>
-        
-        <div style="margin-top: 15px;">
-          <label>
-            <input type="checkbox" id="autoSyncCheckbox"> Auto sync every 30 seconds
-          </label>
-        </div>
-      </div>
-    </div>
-    
-    <div style="background: white; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-      <h2>Data Management</h2>
-      <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Import Quotes (JSON):</label>
-        <input type="file" id="importFile" accept=".json" onchange="importFromJsonFile(event)" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-      </div>
-      <button onclick="exportToJson()" style="padding: 10px 20px; background: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer;">Export Quotes</button>
-    </div>
+
+  <h1>Dynamic Quote Generator</h1>
+
+  <!-- Quote Display -->
+  <div id="quoteDisplay"></div>
+
+  <!-- Button to show random quote -->
+  <button id="newQuote">Show New Quote</button>
+
+  <!-- Add Quote Form -->
+  <div>
+    <input id="newQuoteText" type="text" placeholder="Enter a new quote">
+    <input id="newQuoteCategory" type="text" placeholder="Enter quote category">
+    <button id="addQuoteBtn">Add Quote</button>
   </div>
-  
+
   <script src="script.js"></script>
 </body>
 </html>
