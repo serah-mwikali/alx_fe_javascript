@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dynamic Quote Generator with Storage</title>
+  <title>Dynamic Quote Generator with Filtering</title>
   <style>
     * {
       margin: 0;
@@ -152,11 +152,92 @@
       box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
     }
     
-    #categoryFilter {
+    .filter-section {
       margin-top: 20px;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+    
+    .filter-section h3 {
+      color: #495057;
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+    }
+    
+    .filter-controls {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .filter-group {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .filter-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #495057;
+    }
+    
+    select {
+      width: 100%;
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 1rem;
+      background-color: white;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+    
+    select:focus {
+      outline: none;
+      border-color: #6a11cb;
+      box-shadow: 0 0 0 3px rgba(106, 17, 203, 0.1);
+    }
+    
+    #categoryButtons {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
+      margin-top: 20px;
+    }
+    
+    .category-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background-color: #eef4ff;
+      color: #2575fc;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .category-badge:hover {
+      background-color: #2575fc;
+      color: white;
+      transform: translateY(-2px);
+    }
+    
+    .category-badge.active {
+      background-color: #6a11cb;
+      color: white;
+    }
+    
+    .category-count {
+      background-color: rgba(255, 255, 255, 0.2);
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 0.8rem;
     }
     
     .form-group {
@@ -415,12 +496,34 @@
     .session-storage {
       background-color: #007bff;
     }
+    
+    .filtered-count {
+      font-size: 0.9rem;
+      color: #6c757d;
+      margin-top: 5px;
+      text-align: center;
+    }
+    
+    .filter-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .reset-filter {
+      background-color: #6c757d;
+      color: white;
+    }
+    
+    .reset-filter:hover {
+      background-color: #5a6268;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Dynamic Quote Generator with Storage</h1>
-    <p class="subtitle">Advanced DOM manipulation with Web Storage & JSON Import/Export</p>
+    <h1>Dynamic Quote Generator with Advanced Filtering</h1>
+    <p class="subtitle">Web Storage, JSON Handling & Dynamic Category Filtering</p>
   </header>
   
   <div class="container">
@@ -438,8 +541,40 @@
         <button id="allCategories" class="category-btn active">All Categories</button>
       </div>
       
-      <div id="categoryFilter">
-        <!-- Category buttons will be dynamically generated here -->
+      <!-- Enhanced Filtering Section -->
+      <div class="filter-section">
+        <h3>Filter Quotes by Category</h3>
+        
+        <div class="filter-controls">
+          <div class="filter-group">
+            <label for="categoryFilter">Select Category:</label>
+            <select id="categoryFilter">
+              <option value="all">All Categories</option>
+              <!-- Categories will be populated dynamically -->
+            </select>
+          </div>
+          
+          <div class="filter-group">
+            <label for="sortBy">Sort By:</label>
+            <select id="sortBy">
+              <option value="random">Random</option>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="author">Author (A-Z)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="filter-actions">
+          <button id="applyFilter" class="category-btn">Apply Filter</button>
+          <button id="resetFilter" class="reset-filter">Reset Filter</button>
+        </div>
+        
+        <div id="categoryButtons" class="category-buttons">
+          <!-- Category badges will be dynamically generated here -->
+        </div>
+        
+        <p id="filteredCount" class="filtered-count">Showing all quotes</p>
       </div>
       
       <!-- Session Storage Info -->
@@ -458,8 +593,8 @@
           <div class="stat-label">Categories</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value" id="quotesShown">0</div>
-          <div class="stat-label">Quotes Displayed</div>
+          <div class="stat-value" id="filteredQuotes">0</div>
+          <div class="stat-label">Filtered Quotes</div>
         </div>
       </div>
       
@@ -524,7 +659,7 @@
   </div>
   
   <footer>
-    <p>Dynamic Quote Generator | Advanced DOM Manipulation with Web Storage & JSON</p>
+    <p>Dynamic Quote Generator | Advanced Filtering with Web Storage & JSON</p>
   </footer>
   
   <script src="script.js"></script>

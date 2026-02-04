@@ -7,21 +7,24 @@ const QuoteGenerator = {
   categories: ["Motivation", "Life", "Inspiration", "Perseverance", "Happiness", "Wisdom", "Love", "Courage"],
   
   // Current filter
-  currentFilter: "All Categories",
+  currentFilter: "all",
+  sortBy: "random",
   
   // Statistics
   stats: {
     quotesShown: 0,
     totalQuotes: 0,
     totalCategories: 0,
-    sessionStartTime: new Date().toLocaleTimeString()
+    sessionStartTime: new Date().toLocaleTimeString(),
+    filteredQuotes: 0
   },
   
   // Session data
   sessionData: {
     lastViewedQuote: null,
     lastViewedCategory: null,
-    viewCount: 0
+    viewCount: 0,
+    lastFilter: "all"
   },
   
   // DOM Elements
@@ -33,11 +36,13 @@ const QuoteGenerator = {
     this.loadFromStorage();
     this.bindEvents();
     this.updateStats();
-    this.populateCategories();
-    this.renderCategoryFilters();
+    this.populateCategories(); // For dropdown
+    this.renderCategoryBadges(); // For badge buttons
+    this.applyFilter(); // Apply saved filter
     this.showRandomQuote();
     this.renderRecentQuotes();
     this.updateSessionInfo();
+    this.updateFilteredCount();
   },
   
   // Cache DOM elements
@@ -48,6 +53,12 @@ const QuoteGenerator = {
       randomCategoryBtn: document.getElementById('randomCategory'),
       allCategoriesBtn: document.getElementById('allCategories'),
       categoryFilter: document.getElementById('categoryFilter'),
+      sortBy: document.getElementById('sortBy'),
+      applyFilter: document.getElementById('applyFilter'),
+      resetFilter: document.getElementById('resetFilter'),
+      categoryButtons: document.getElementById('categoryButtons'),
+      filteredCount: document.getElementById('filteredCount'),
+      filteredQuotes: document.getElementById('filteredQuotes'),
       newQuoteText: document.getElementById('newQuoteText'),
       newQuoteAuthor: document.getElementById('newQuoteAuthor'),
       newQuoteCategory: document.getElementById('newQuoteCategory'),
@@ -86,6 +97,11 @@ const QuoteGenerator = {
     this.elements.saveCategoryBtn.addEventListener('click', () => this.saveCategory());
     this.elements.cancelCategoryBtn.addEventListener('click', () => this.hideCategoryForm());
     
+    // Filter events
+    this.elements.applyFilter.addEventListener('click', () => this.applyFilter());
+    this.elements.resetFilter.addEventListener('click', () => this.resetFilter());
+    this.elements.sortBy.addEventListener('change', () => this.applyFilter());
+    
     // Storage events
     this.elements.exportBtn.addEventListener('click', () => this.exportToJSON());
     this.elements.importFile.addEventListener('change', (e) => this.importFromJSON(e));
@@ -93,71 +109,247 @@ const QuoteGenerator = {
   },
   
   // ====================
-  // WEB STORAGE METHODS
+  // FILTERING SYSTEM
   // ====================
   
-  // Save quotes to Local Storage
-  saveToLocalStorage: function() {
+  // Populate categories dropdown (as required by task)
+  populateCategories: function() {
+    // Clear existing options
+    this.elements.categoryFilter.innerHTML = '';
+    this.elements.newQuoteCategory.innerHTML = '';
+    
+    // Add "All Categories" option
+    const allOption = document.createElement('option');
+    allOption.value = 'all';
+    allOption.textContent = 'All Categories';
+    this.elements.categoryFilter.appendChild(allOption);
+    
+    // Add an option for each category
+    this.categories.forEach(category => {
+      // For filter dropdown
+      const filterOption = document.createElement('option');
+      filterOption.value = category;
+      filterOption.textContent = category;
+      this.elements.categoryFilter.appendChild(filterOption);
+      
+      // For quote addition dropdown
+      const addOption = document.createElement('option');
+      addOption.value = category;
+      addOption.textContent = category;
+      this.elements.newQuoteCategory.appendChild(addOption);
+    });
+    
+    // Set current filter from saved preference
+    this.elements.categoryFilter.value = this.currentFilter;
+    this.elements.sortBy.value = this.sortBy;
+  },
+  
+  // Render category badges (buttons)
+  renderCategoryBadges: function() {
+    // Clear existing badges
+    this.elements.categoryButtons.innerHTML = '';
+    
+    // Add "All" badge
+    const allBadge = document.createElement('span');
+    allBadge.className = `category-badge ${this.currentFilter === 'all' ? 'active' : ''}`;
+    allBadge.textContent = 'All Categories';
+    allBadge.addEventListener('click', () => {
+      this.currentFilter = 'all';
+      this.applyFilter();
+      this.saveFilterPreference();
+    });
+    this.elements.categoryButtons.appendChild(allBadge);
+    
+    // Create a badge for each category with count
+    this.categories.forEach(category => {
+      const count = this.getQuoteCountByCategory(category);
+      const badge = document.createElement('span');
+      badge.className = `category-badge ${this.currentFilter === category ? 'active' : ''}`;
+      badge.innerHTML = `
+        ${category}
+        <span class="category-count">${count}</span>
+      `;
+      badge.addEventListener('click', () => {
+        this.currentFilter = category;
+        this.applyFilter();
+        this.saveFilterPreference();
+      });
+      this.elements.categoryButtons.appendChild(badge);
+    });
+  },
+  
+  // Get count of quotes by category
+  getQuoteCountByCategory: function(category) {
+    return this.quotes.filter(quote => quote.category === category).length;
+  },
+  
+  // Apply filter based on selected category and sort
+  applyFilter: function() {
+    // Get filter values
+    this.currentFilter = this.elements.categoryFilter.value;
+    this.sortBy = this.elements.sortBy.value;
+    
+    // Save filter preference
+    this.saveFilterPreference();
+    
+    // Update UI
+    this.updateFilteredCount();
+    this.renderCategoryBadges();
+    
+    // Update session data
+    if (this.currentFilter !== 'all') {
+      this.sessionData.lastViewedCategory = this.currentFilter;
+      this.saveToSessionStorage();
+      this.updateSessionInfo();
+    }
+    
+    // Show a quote based on filter
+    this.showFilteredQuote();
+  },
+  
+  // Show a filtered quote
+  showFilteredQuote: function() {
+    let filteredQuotes = this.quotes;
+    
+    // Apply category filter
+    if (this.currentFilter !== 'all') {
+      filteredQuotes = this.quotes.filter(quote => quote.category === this.currentFilter);
+    }
+    
+    // Apply sorting
+    filteredQuotes = this.sortQuotes(filteredQuotes, this.sortBy);
+    
+    // Update filtered count
+    this.stats.filteredQuotes = filteredQuotes.length;
+    this.updateStats();
+    
+    // Check if we have quotes to show
+    if (filteredQuotes.length === 0) {
+      this.displayQuote(
+        `No quotes found ${this.currentFilter !== 'all' ? `in category "${this.currentFilter}"` : ''}. Add some quotes!`,
+        "System",
+        "Info"
+      );
+      return;
+    }
+    
+    // Get a random quote from filtered list
+    const randomIndex = Math.floor(Math.random() * filteredQuotes.length);
+    const randomQuote = filteredQuotes[randomIndex];
+    
+    // Display the quote
+    this.displayQuote(randomQuote.text, randomQuote.author, randomQuote.category);
+    
+    // Update session data
+    this.sessionData.lastViewedQuote = randomQuote;
+    this.sessionData.viewCount++;
+    this.saveToSessionStorage();
+    this.updateSessionInfo();
+    
+    // Update stats
+    this.stats.quotesShown++;
+    this.updateStats();
+  },
+  
+  // Sort quotes based on selected criteria
+  sortQuotes: function(quotes, sortBy) {
+    const sortedQuotes = [...quotes];
+    
+    switch (sortBy) {
+      case 'newest':
+        // Assuming newer quotes are at the end of array
+        return sortedQuotes.reverse();
+        
+      case 'oldest':
+        // Assuming older quotes are at the beginning
+        return sortedQuotes;
+        
+      case 'author':
+        return sortedQuotes.sort((a, b) => a.author.localeCompare(b.author));
+        
+      case 'random':
+        return this.shuffleArray(sortedQuotes);
+        
+      default:
+        return sortedQuotes;
+    }
+  },
+  
+  // Shuffle array for random sorting
+  shuffleArray: function(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  },
+  
+  // Reset filter to show all categories
+  resetFilter: function() {
+    this.currentFilter = 'all';
+    this.sortBy = 'random';
+    this.elements.categoryFilter.value = 'all';
+    this.elements.sortBy.value = 'random';
+    this.applyFilter();
+  },
+  
+  // Update filtered count display
+  updateFilteredCount: function() {
+    let count = this.quotes.length;
+    let text = `Showing all ${count} quotes`;
+    
+    if (this.currentFilter !== 'all') {
+      count = this.getQuoteCountByCategory(this.currentFilter);
+      text = `Showing ${count} quotes in category: "${this.currentFilter}"`;
+    }
+    
+    if (this.sortBy !== 'random') {
+      text += ` | Sorted by: ${this.sortBy}`;
+    }
+    
+    this.elements.filteredCount.textContent = text;
+  },
+  
+  // Save filter preference to local storage
+  saveFilterPreference: function() {
     try {
-      const data = {
-        quotes: this.quotes,
-        categories: this.categories,
-        stats: this.stats
+      const filterPref = {
+        category: this.currentFilter,
+        sortBy: this.sortBy,
+        lastUpdated: new Date().toISOString()
       };
-      localStorage.setItem('quoteGeneratorData', JSON.stringify(data));
-      console.log('Data saved to Local Storage');
+      localStorage.setItem('quoteFilterPreference', JSON.stringify(filterPref));
     } catch (error) {
-      console.error('Error saving to Local Storage:', error);
-      this.showStorageAlert('Error saving data to Local Storage', 'error');
+      console.error('Error saving filter preference:', error);
     }
   },
   
-  // Load quotes from Local Storage
-  loadFromLocalStorage: function() {
+  // Load filter preference from local storage
+  loadFilterPreference: function() {
     try {
-      const savedData = localStorage.getItem('quoteGeneratorData');
-      if (savedData) {
-        const data = JSON.parse(savedData);
-        this.quotes = data.quotes || [];
-        this.categories = data.categories || ["Motivation", "Life", "Inspiration"];
-        this.stats = data.stats || { quotesShown: 0, totalQuotes: 0, totalCategories: 0 };
-        console.log('Data loaded from Local Storage');
+      const savedPref = localStorage.getItem('quoteFilterPreference');
+      if (savedPref) {
+        const pref = JSON.parse(savedPref);
+        this.currentFilter = pref.category || 'all';
+        this.sortBy = pref.sortBy || 'random';
         return true;
       }
     } catch (error) {
-      console.error('Error loading from Local Storage:', error);
-      this.showStorageAlert('Error loading data from Local Storage', 'error');
+      console.error('Error loading filter preference:', error);
     }
     return false;
   },
   
-  // Save session data to Session Storage
-  saveToSessionStorage: function() {
-    try {
-      sessionStorage.setItem('quoteGeneratorSession', JSON.stringify(this.sessionData));
-    } catch (error) {
-      console.error('Error saving to Session Storage:', error);
-    }
-  },
+  // ====================
+  // EXISTING METHODS (Updated)
+  // ====================
   
-  // Load session data from Session Storage
-  loadFromSessionStorage: function() {
-    try {
-      const savedSession = sessionStorage.getItem('quoteGeneratorSession');
-      if (savedSession) {
-        this.sessionData = JSON.parse(savedSession);
-        return true;
-      }
-    } catch (error) {
-      console.error('Error loading from Session Storage:', error);
-    }
-    return false;
-  },
-  
-  // Load all data from storage
+  // Load all data from storage (updated to include filter preferences)
   loadFromStorage: function() {
     const hasLocalData = this.loadFromLocalStorage();
     const hasSessionData = this.loadFromSessionStorage();
+    this.loadFilterPreference(); // Load filter preferences
     
     // If no local data, load default quotes
     if (!hasLocalData || this.quotes.length === 0) {
@@ -170,286 +362,10 @@ const QuoteGenerator = {
         lastViewedQuote: null,
         lastViewedCategory: null,
         viewCount: 0,
+        lastFilter: this.currentFilter,
         sessionStartTime: new Date().toLocaleTimeString()
       };
     }
-  },
-  
-  // Load default quotes
-  loadDefaultQuotes: function() {
-    this.quotes = [
-      {
-        text: "The only way to do great work is to love what you do.",
-        author: "Steve Jobs",
-        category: "Motivation"
-      },
-      {
-        text: "Life is what happens to you while you're busy making other plans.",
-        author: "John Lennon",
-        category: "Life"
-      },
-      {
-        text: "The future belongs to those who believe in the beauty of their dreams.",
-        author: "Eleanor Roosevelt",
-        category: "Inspiration"
-      },
-      {
-        text: "It is during our darkest moments that we must focus to see the light.",
-        author: "Aristotle",
-        category: "Perseverance"
-      },
-      {
-        text: "Whoever is happy will make others happy too.",
-        author: "Anne Frank",
-        category: "Happiness"
-      },
-      {
-        text: "You must be the change you wish to see in the world.",
-        author: "Mahatma Gandhi",
-        category: "Wisdom"
-      },
-      {
-        text: "Spread love everywhere you go. Let no one ever come to you without leaving happier.",
-        author: "Mother Teresa",
-        category: "Love"
-      },
-      {
-        text: "The only thing we have to fear is fear itself.",
-        author: "Franklin D. Roosevelt",
-        category: "Courage"
-      }
-    ];
-    
-    this.stats.totalQuotes = this.quotes.length;
-    this.stats.totalCategories = this.categories.length;
-    this.saveToLocalStorage();
-  },
-  
-  // Update session info
-  updateSessionInfo: function() {
-    this.sessionData.viewCount++;
-    this.saveToSessionStorage();
-    
-    let sessionText = `Quotes viewed this session: ${this.sessionData.viewCount}`;
-    if (this.sessionData.lastViewedQuote) {
-      sessionText += ` | Last quote: "${this.sessionData.lastViewedQuote.text.substring(0, 30)}..."`;
-    }
-    if (this.sessionData.lastViewedCategory) {
-      sessionText += ` | Last category: ${this.sessionData.lastViewedCategory}`;
-    }
-    
-    this.elements.sessionData.textContent = sessionText;
-  },
-  
-  // ====================
-  // JSON IMPORT/EXPORT
-  // ====================
-  
-  // Export quotes to JSON file
-  exportToJSON: function() {
-    try {
-      const data = {
-        quotes: this.quotes,
-        categories: this.categories,
-        exportDate: new Date().toISOString(),
-        totalQuotes: this.quotes.length,
-        totalCategories: this.categories.length
-      };
-      
-      const jsonString = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      
-      // Create download link
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `quotes-export-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      this.showStorageAlert('Quotes exported successfully!', 'success');
-    } catch (error) {
-      console.error('Error exporting quotes:', error);
-      this.showStorageAlert('Error exporting quotes', 'error');
-    }
-  },
-  
-  // Import quotes from JSON file
-  importFromJSON: function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const fileReader = new FileReader();
-    
-    fileReader.onload = (e) => {
-      try {
-        const importedData = JSON.parse(e.target.result);
-        
-        // Validate imported data
-        if (!importedData.quotes || !Array.isArray(importedData.quotes)) {
-          throw new Error('Invalid JSON format: missing quotes array');
-        }
-        
-        // Add imported quotes
-        const newQuotes = importedData.quotes.filter(newQuote => 
-          !this.quotes.some(existingQuote => 
-            existingQuote.text === newQuote.text && 
-            existingQuote.author === newQuote.author
-          )
-        );
-        
-        if (newQuotes.length > 0) {
-          this.quotes.push(...newQuotes);
-          
-          // Add new categories if present
-          if (importedData.categories && Array.isArray(importedData.categories)) {
-            importedData.categories.forEach(category => {
-              if (!this.categories.includes(category)) {
-                this.categories.push(category);
-              }
-            });
-          }
-          
-          // Save to storage
-          this.saveToLocalStorage();
-          this.updateStats();
-          this.populateCategories();
-          this.renderCategoryFilters();
-          this.renderRecentQuotes();
-          
-          this.showStorageAlert(`Successfully imported ${newQuotes.length} new quotes!`, 'success');
-          
-          // Reset file input
-          event.target.value = '';
-        } else {
-          this.showStorageAlert('No new quotes found in the import file', 'error');
-        }
-      } catch (error) {
-        console.error('Error importing quotes:', error);
-        this.showStorageAlert(`Import failed: ${error.message}`, 'error');
-      }
-    };
-    
-    fileReader.onerror = () => {
-      this.showStorageAlert('Error reading the file', 'error');
-    };
-    
-    fileReader.readAsText(file);
-  },
-  
-  // Clear all data
-  clearAllData: function() {
-    if (confirm('Are you sure you want to clear ALL data? This will remove all quotes and reset to defaults.')) {
-      try {
-        // Clear localStorage
-        localStorage.removeItem('quoteGeneratorData');
-        
-        // Clear sessionStorage
-        sessionStorage.removeItem('quoteGeneratorSession');
-        
-        // Reset to defaults
-        this.loadDefaultQuotes();
-        this.sessionData = {
-          lastViewedQuote: null,
-          lastViewedCategory: null,
-          viewCount: 0,
-          sessionStartTime: new Date().toLocaleTimeString()
-        };
-        
-        // Update UI
-        this.updateStats();
-        this.populateCategories();
-        this.renderCategoryFilters();
-        this.renderRecentQuotes();
-        this.updateSessionInfo();
-        
-        this.showStorageAlert('All data has been cleared. Default quotes loaded.', 'success');
-        this.showRandomQuote();
-      } catch (error) {
-        console.error('Error clearing data:', error);
-        this.showStorageAlert('Error clearing data', 'error');
-      }
-    }
-  },
-  
-  // Show storage alert
-  showStorageAlert: function(message, type = 'info') {
-    this.elements.storageAlert.innerHTML = `
-      <div class="alert alert-${type}">
-        ${message}
-      </div>
-    `;
-    
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-      this.elements.storageAlert.innerHTML = '';
-    }, 5000);
-  },
-  
-  // ====================
-  // EXISTING FUNCTIONALITY (Updated)
-  // ====================
-  
-  // Function to display a random quote
-  showRandomQuote: function() {
-    // Filter quotes if a category is selected
-    let filteredQuotes = this.quotes;
-    if (this.currentFilter !== "All Categories" && this.currentFilter !== "Random Category") {
-      filteredQuotes = this.quotes.filter(quote => quote.category === this.currentFilter);
-    }
-    
-    // Check if we have quotes to show
-    if (filteredQuotes.length === 0) {
-      this.displayQuote(
-        "No quotes found in this category. Add some quotes or select a different category.",
-        "System",
-        "Info"
-      );
-      return;
-    }
-    
-    // Get a random quote
-    const randomIndex = Math.floor(Math.random() * filteredQuotes.length);
-    const randomQuote = filteredQuotes[randomIndex];
-    
-    // Display the quote
-    this.displayQuote(randomQuote.text, randomQuote.author, randomQuote.category);
-    
-    // Update session data
-    this.sessionData.lastViewedQuote = randomQuote;
-    this.sessionData.lastViewedCategory = randomQuote.category;
-    this.saveToSessionStorage();
-    this.updateSessionInfo();
-    
-    // Update stats
-    this.stats.quotesShown++;
-    this.updateStats();
-  },
-  
-  // Display a quote in the DOM
-  displayQuote: function(text, author, category) {
-    // Clear the current quote display
-    this.elements.quoteDisplay.innerHTML = '';
-    
-    // Create quote elements
-    const quoteText = document.createElement('p');
-    quoteText.className = 'quote-text';
-    quoteText.textContent = `"${text}"`;
-    
-    const quoteAuthor = document.createElement('p');
-    quoteAuthor.className = 'quote-author';
-    quoteAuthor.textContent = `- ${author}`;
-    
-    const quoteCategory = document.createElement('span');
-    quoteCategory.className = 'quote-category';
-    quoteCategory.textContent = category;
-    
-    // Add elements to the display
-    this.elements.quoteDisplay.appendChild(quoteText);
-    this.elements.quoteDisplay.appendChild(quoteAuthor);
-    this.elements.quoteDisplay.appendChild(quoteCategory);
   },
   
   // Show quotes from a random category
@@ -457,84 +373,18 @@ const QuoteGenerator = {
     // Get a random category
     const randomIndex = Math.floor(Math.random() * this.categories.length);
     this.currentFilter = this.categories[randomIndex];
-    
-    // Update active button
-    this.updateActiveCategoryButton(this.currentFilter);
-    
-    // Show a quote from that category
-    this.showRandomQuote();
+    this.elements.categoryFilter.value = this.currentFilter;
+    this.applyFilter();
   },
   
   // Show quotes from all categories
   showAllCategories: function() {
-    this.currentFilter = "All Categories";
-    this.updateActiveCategoryButton("All Categories");
-    this.showRandomQuote();
+    this.currentFilter = "all";
+    this.elements.categoryFilter.value = "all";
+    this.applyFilter();
   },
   
-  // Filter quotes by a specific category
-  filterByCategory: function(category) {
-    this.currentFilter = category;
-    this.updateActiveCategoryButton(category);
-    this.showRandomQuote();
-  },
-  
-  // Update the active category button
-  updateActiveCategoryButton: function(activeCategory) {
-    // Remove active class from all category buttons
-    const allButtons = document.querySelectorAll('.category-btn');
-    allButtons.forEach(btn => {
-      btn.classList.remove('active');
-    });
-    
-    // Add active class to the corresponding button
-    if (activeCategory === "All Categories") {
-      this.elements.allCategoriesBtn.classList.add('active');
-    } else {
-      // Find the button for this category
-      const categoryButtons = document.querySelectorAll('.category-filter-btn');
-      categoryButtons.forEach(btn => {
-        if (btn.textContent === activeCategory) {
-          btn.classList.add('active');
-        }
-      });
-    }
-  },
-  
-  // Render category filter buttons
-  renderCategoryFilters: function() {
-    // Clear existing buttons
-    this.elements.categoryFilter.innerHTML = '';
-    
-    // Create a button for each category
-    this.categories.forEach(category => {
-      const button = document.createElement('button');
-      button.className = 'category-btn category-filter-btn';
-      button.textContent = category;
-      
-      // Add event listener
-      button.addEventListener('click', () => this.filterByCategory(category));
-      
-      // Add to DOM
-      this.elements.categoryFilter.appendChild(button);
-    });
-  },
-  
-  // Populate category select dropdown
-  populateCategories: function() {
-    // Clear existing options
-    this.elements.newQuoteCategory.innerHTML = '';
-    
-    // Add an option for each category
-    this.categories.forEach(category => {
-      const option = document.createElement('option');
-      option.value = category;
-      option.textContent = category;
-      this.elements.newQuoteCategory.appendChild(option);
-    });
-  },
-  
-  // Function to add a new quote
+  // Function to add a new quote (updated to refresh filters)
   addQuote: function() {
     // Get form values
     const text = this.elements.newQuoteText.value.trim();
@@ -561,7 +411,8 @@ const QuoteGenerator = {
     const newQuote = {
       text,
       author,
-      category
+      category,
+      addedDate: new Date().toISOString()
     };
     
     // Add to quotes array
@@ -570,8 +421,8 @@ const QuoteGenerator = {
     // Add category if it's new
     if (!this.categories.includes(category)) {
       this.categories.push(category);
-      this.populateCategories();
-      this.renderCategoryFilters();
+      this.populateCategories(); // Refresh dropdowns
+      this.renderCategoryBadges(); // Refresh badges
     }
     
     // Clear the form
@@ -585,6 +436,7 @@ const QuoteGenerator = {
     this.stats.totalQuotes = this.quotes.length;
     this.stats.totalCategories = this.categories.length;
     this.updateStats();
+    this.updateFilteredCount();
     
     // Render recent quotes
     this.renderRecentQuotes();
@@ -592,25 +444,18 @@ const QuoteGenerator = {
     // Show success message
     this.showStorageAlert('Quote added successfully!', 'success');
     
-    // If we're currently filtered to this category, update the display
-    if (this.currentFilter === category || this.currentFilter === "All Categories") {
-      setTimeout(() => this.showRandomQuote(), 1500);
+    // Update the display if we're viewing this category or all
+    if (this.currentFilter === category || this.currentFilter === 'all') {
+      setTimeout(() => this.showFilteredQuote(), 1000);
     }
   },
   
-  // Show the form to add a new category
-  showCategoryForm: function() {
-    this.elements.newCategoryForm.classList.remove('hidden');
-    this.elements.newCategoryName.focus();
+  // Show random quote (updated to use filtered view)
+  showRandomQuote: function() {
+    this.showFilteredQuote();
   },
   
-  // Hide the category form
-  hideCategoryForm: function() {
-    this.elements.newCategoryForm.classList.add('hidden');
-    this.elements.newCategoryName.value = '';
-  },
-  
-  // Save a new category
+  // Save a new category (updated to refresh filters)
   saveCategory: function() {
     const categoryName = this.elements.newCategoryName.value.trim();
     
@@ -629,11 +474,9 @@ const QuoteGenerator = {
     // Add the new category
     this.categories.push(categoryName);
     
-    // Update the category filter buttons
-    this.renderCategoryFilters();
-    
-    // Update the category dropdown
-    this.populateCategories();
+    // Update UI
+    this.populateCategories(); // Refresh dropdowns
+    this.renderCategoryBadges(); // Refresh badges
     
     // Set the new category as selected in the dropdown
     this.elements.newQuoteCategory.value = categoryName;
@@ -641,7 +484,29 @@ const QuoteGenerator = {
     // Save to localStorage
     this.saveToLocalStorage();
     
+    // Update stats
+    this.stats.totalCategories = this.categories.length;
+    this.updateStats();
+    
     // Hide the form
     this.hideCategoryForm();
     
-    //
+    // Show success message
+    this.showStorageAlert(`Category "${categoryName}" has been added successfully!`, 'success');
+  },
+  
+  // ====================
+  // EXISTING WEB STORAGE & JSON METHODS
+  // ====================
+  
+  // Save quotes to Local Storage
+  saveToLocalStorage: function() {
+    try {
+      const data = {
+        quotes: this.quotes,
+        categories: this.categories,
+        stats: this.stats
+      };
+      localStorage.setItem('quoteGeneratorData', JSON.stringify(data));
+    } catch (error) {
+      console.error('
