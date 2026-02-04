@@ -21,6 +21,19 @@
 
   <button id="newQuote">Show New Quote</button>
 
+  <hr>
+
+  <button id="exportQuotes">Export Quotes (JSON)</button>
+
+  <br><br>
+
+  <input
+    type="file"
+    id="importFile"
+    accept=".json"
+    onchange="importFromJsonFile(event)"
+  >
+
   <script src="script.js"></script>
 </body>
 </html>
